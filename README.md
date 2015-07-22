@@ -1,2 +1,2 @@
 # DanmakuCode
-我投稿过得高级弹幕代码
+- [围住刀哥(ChatNoir)](http://www.bilibili.com/video/av2593897/) 被和谐了一圈啊
