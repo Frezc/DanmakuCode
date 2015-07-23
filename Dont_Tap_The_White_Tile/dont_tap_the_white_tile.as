@@ -8,6 +8,30 @@ var GAME_PLAYING = 1;
 var GAME_OVER = 2;
 var KEYSETTING = 3;
 
+var KEYMAP = {
+	34: "PAGE DOWN",
+	35: "END",
+	36: "HOME",
+	37: "←",
+	38: "↑",
+	39:	"→",
+	40: "↓",
+	65: "A",
+	68: "D",
+	83:	"S",
+	87: "W",
+	96: "小键盘 0",
+	97: "小键盘 1",
+	98: "小键盘 2",
+	99: "小键盘 3",
+	100: "小键盘 4",
+	101: "小键盘 5",
+	102: "小键盘 6",
+	103: "小键盘 7",
+	104: "小键盘 8",
+	105: "小键盘 9"
+};
+
 var gameManager;
 
 
@@ -84,13 +108,13 @@ trace("#3");
 	});
 	view.tBoardShow = Tween.to(view.gameOverBoard, {alpha: 1}, 0.5);
 	view.tBoardHide = Tween.to(view.gameOverBoard, {alpha: 0}, 0.3);
-	view.boardBackgroud = $.createShape({
+	var boardBackgroud = $.createShape({
 		lifeTime: 0,
 		x: 0,
 		y: 0,
 		parent: view.gameOverBoard
 	});
-	var g = view.boardBackgroud.graphics;
+	var g = boardBackgroud.graphics;
 	g.beginFill(0xffffff);
 	g.lineStyle(1, 0x000000,1,true);
 	g.drawRoundRect(0,0,250,200,20,20);
@@ -120,6 +144,82 @@ trace("#3");
 		},
 		parent: view.gameOverBoard
 	});
+
+	//改键区域
+	view.keymapCanvas = $.createCanvas({
+		lifeTime: 0,
+		parent: view.canvas
+	});
+	view.keymapBackground = $.createShape({
+		lifeTime: 0,
+		x: 0,
+		y: 0,
+		parent: view.keymapCanvas
+	});
+	var g = view.keymapBackground.graphics;
+	g.beginFill(0xffffff);
+	g.lineStyle(1, 0x000000,1,true);
+	g.drawRoundRect(0,0,128,250,20,20);
+	g.endFill();
+	$.createComment("改键区域",{
+		lifeTime: 0,
+		x: 8,
+		y: 8,
+		parent: view.keymapCanvas
+	});
+	view.kmButton = [];
+	var key = ($G._get("keySet"))[0];
+	var button = $.createButton({
+		x: 16,
+		y: 58,
+		width: 96,
+		lifeTime: 0,
+		text: "1: " + KEYMAP[key],
+		onclick: function(){
+			manager.keySets(0);
+		},
+		parent: view.keymapCanvas
+	});
+	view.kmButton.push(button);
+	key = ($G._get("keySet"))[1];
+	button = $.createButton({
+		x: 16,
+		y: 108,
+		width: 96,
+		lifeTime: 0,
+		text: "2: " + KEYMAP[key],
+		onclick: function(){
+			manager.keySets(1);
+		},
+		parent: view.keymapCanvas
+	});
+	view.kmButton.push(button);
+	key = ($G._get("keySet"))[2];
+	button = $.createButton({
+		x: 16,
+		y: 158,
+		width: 96,
+		lifeTime: 0,
+		text: "3: " + KEYMAP[key],
+		onclick: function(){
+			manager.keySets(2);
+		},
+		parent: view.keymapCanvas
+	});
+	view.kmButton.push(button);
+	key = ($G._get("keySet"))[3];
+	button = $.createButton({
+		x: 16,
+		y: 208,
+		width: 96,
+		lifeTime: 0,
+		text: "4: " + KEYMAP[key],
+		onclick: function(){
+			manager.keySets(3);
+		},
+		parent: view.keymapCanvas
+	});
+	view.kmButton.push(button);
 
 	//method
 	/**移动函数
@@ -154,7 +254,7 @@ trace("#3");
 	};
 
 	view.gameOver = function(isWin, param){
-		trace("view.gameOver :[isWin: "+ isWin + ", param: "+param+"]");
+//		trace("view.gameOver :[isWin: "+ isWin + ", param: "+param+"]");
 		if(isWin){
 			this.scoreTitle.text = "本次时间: " + param.time;
 			this.bestscoreTitle.text = "最佳时间: "+param.bestTime;
@@ -165,7 +265,7 @@ trace("#3");
 			this.bestscoreTitle.text = "最佳时间: "+param.bestTime;
 
 			(Tween.delay(this.tBoardShow ,1.2)).play();
-			trace("board show");
+//			trace("board show");
 		}
 	};
 
@@ -242,6 +342,9 @@ trace("#3");
 		g.beginFill(0xff0000);
 		g.drawRect(1,1,this.blockWidth - 2, this.blockHeight - 2);
 		g.endFill();
+		//调整改键区位置
+		this.keymapCanvas.x = $.width - 158;
+		this.keymapCanvas.y = 100;
 	};
 
 	return view;
@@ -272,6 +375,10 @@ trace("#2");
     manager.timer.stop();
     //计数器 50个结束游戏
     manager.blockCounter = 0;
+    //状态缓冲 用来改键后返回原来的状态
+    manager.flagCache;
+    //音效
+    manager.sound;
 
     //method
     //init
@@ -307,9 +414,10 @@ trace("#2");
 
     manager.gameStart = function(){
     	trace("call gameStart");
-    	manager.timeStamp = Player.time;
-    	manager.timer.start();
-    	manager.keySet = $G._get("keySet");
+    	this.timeStamp = Player.time;
+    	this.timer.start();
+    	this.keySet = $G._get("keySet");
+    	this.sound = $G._("_gal_sound_over");
     	this.gameFlag = GAME_PLAYING;
     };
 
@@ -338,6 +446,7 @@ trace("#2");
 
     manager.linePress = function(n){
     	//trace("call linePress");
+    	Player.play();
     	var line = this.keySet.indexOf(n);
     	if(this.grid[1][line] == BLOCK_BLACK){
     		this.moveOn(line);
@@ -348,13 +457,21 @@ trace("#2");
 
     manager.moveOn = function(i){
     	//trace("call manager.moveOn("+i+")");
+    	if(this.sound){
+    		this.sound.play();
+    	}
+
     	this.blockCounter ++;
     	if(this.blockCounter >= 50){
     		this.gameOver(true);
     		return;
     	}
     	this.grid.shift();
-    	this.grid.push(this._getRandomRow());
+    	if(this.blockCounter >= 48){
+    		this.grid.push([-1,-1,-1,-1]);
+    	}else{
+    		this.grid.push(this._getRandomRow());
+		}
 
     	//点过的砖块变色
     	//this.grid[0][i] = BLOCK_CLICKED;
@@ -363,15 +480,51 @@ trace("#2");
 
     };
 
+    //游戏过程中不允许改键
+    manager.keySets = function(index){
+    	if(this.gameFlag == GAME_PLAYING || this.gameFlag == KEYSETTING){
+    		return;
+    	}
+    	this.flagCache = this.gameFlag;
+    	this.gameFlag = KEYSETTING;
+    	this.gameView.kmButton[index].text = (index+1) + ": 按下设置";
+    	this.ksIndex = index;
+    };
+
+    //改变按键 检查冲突
+    manager.keyChange = function(key){
+trace("chang index: "+this.ksIndex+" to key: "+key);
+    	var ks = $G._get("keySet");
+    	var index = this.ksIndex;
+    	var k = ks[index];
+//trace("ks:"+ks+" k:"+k);
+    	if(ks.indexOf(key) != -1 || key == 37 || key == 38 || key == 39 || key == 40){
+    		this.gameView.kmButton[index].text = (index+1) + ": " + KEYMAP[k];
+    	}else{
+
+    		ks[index] = key;
+    		$G._set("keySet",ks);
+    		trace("#6 "+ this.ksIndex +":"+ this.gameView.kmButton[index]);
+
+    		this.gameView.kmButton[index].text = (index+1) + ": " + KEYMAP[key];
+    	}
+
+    	//恢复状态
+    	this.gameFlag = this.flagCache;
+    };
+
     manager._keyTrigger = function(key){
     	trace("you press key "+key);
-    	//trace("this.gameFlag: "+manager.gameFlag);
+    	trace("this.gameFlag: "+manager.gameFlag);
     	switch(manager.gameFlag){
     		case GAME_IDLE:
     			manager.gameStart();
-
     		case GAME_PLAYING:
     			manager.linePress(key);
+    			break;
+
+    		case KEYSETTING:
+    			manager.keyChange(key);
     			break;
     	}
     };
@@ -385,6 +538,10 @@ function main(){
 	if($G._get("keySet") == undefined){
 		$G._set("keySet",[83,68,35,36]);
 	}
+
+	var _gal_sound = Player.createSound("btnover",function(){
+		$G._set("_gal_sound_over",_gal_sound);
+	});
 	
 	var gameManager = newManager();
 	trace("#1");
@@ -395,6 +552,6 @@ function main(){
 main();
 
 //todo 
-//声音
-//按键设置
+//声音 
+//按键设置 ok
 //鼠标点击
