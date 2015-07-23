@@ -341,7 +341,7 @@ function newManager(){
 	manager.timeStamp;
     manager.timer = interval(function(){
     	if(Player.time < manager.timeStamp){
-    		manager.timeCounter += Player.time + 10*60*1000 - manager.timeStamp;
+    		manager.timeCounter += Player.time + 10*60*1000 - 1000 - manager.timeStamp;
     	}else{
     		manager.timeCounter += Player.time - manager.timeStamp;
     	}
